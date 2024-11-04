@@ -3,7 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CSV Importer</title>
+    <title>Maison du Savon de Marseille</title>
+    <link rel="icon" href="https://media.licdn.com/dms/image/C4D03AQG4JaIgs716Cg/profile-displayphoto-shrink_200_200/0/1568528139073?e=2147483647&v=beta&t=0bqi6y3S6Foai9ZgDtcZTwM7Okk80CHV6cHjxMC4Dxs" type="image/x-icon" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/4.1.2/papaparse.min.js"></script>
   </head>
   <body>
@@ -19,7 +20,8 @@
     </h3>
     <h4>
       De ex: daca incarci 2 excel-uri "Ferdinand" si "Pitesti", in excel-ul
-      final vei avea coloanele: "totalStock", "stockFerdinand" si "stockPitesti".
+      final vei avea coloanele: "totalStock", "stockFerdinand" si
+      "stockPitesti".
     </h4>
     <input type="file" id="fileInput" accept=".csv" multiple />
     <button onclick="processFiles()">Process Files</button>
@@ -143,7 +145,11 @@
           filterByProductPrefix(mergedJsonArray, prefix)
         );
 
-        saveToCsv(mergedJsonArray, `StocTotal-${getCurrentFormattedDate()}.csv`, fileNames);
+        saveToCsv(
+          mergedJsonArray,
+          `StocTotal-${getCurrentFormattedDate()}.csv`,
+          fileNames
+        );
         prefixes.forEach((prefix, index) => {
           saveToCsv(
             filteredData[index],
