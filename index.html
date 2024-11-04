@@ -4,12 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Maison du Savon de Marseille</title>
-    <link rel="icon" href="https://media.licdn.com/dms/image/C4D03AQG4JaIgs716Cg/profile-displayphoto-shrink_200_200/0/1568528139073?e=2147483647&v=beta&t=0bqi6y3S6Foai9ZgDtcZTwM7Okk80CHV6cHjxMC4Dxs" type="image/x-icon" />
+    <link
+      rel="icon"
+      href="https://media.licdn.com/dms/image/C4D03AQG4JaIgs716Cg/profile-displayphoto-shrink_200_200/0/1568528139073?e=2147483647&v=beta&t=0bqi6y3S6Foai9ZgDtcZTwM7Okk80CHV6cHjxMC4Dxs"
+      type="image/x-icon"
+    />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/4.1.2/papaparse.min.js"></script>
   </head>
   <body>
     <h1>Maison du Savon de Marseille</h1>
-    <h2>Incarca aici fisierele cu stocurile in format .csv.</h2>
+    <h2>Incarca aici fisierele cu stocurile in format csv.</h2>
     <h3>
       Poti incarca oricate fisiere csv cu stocurile, atat timp cat ele respecta
       formatul extras din Smartbill.
@@ -24,10 +28,12 @@
       "stockPitesti".
     </h4>
     <input type="file" id="fileInput" accept=".csv" multiple />
-    <button id="processButton" onclick="processFiles()" disabled>Process Files</button>
+    <button id="processButton" onclick="processFiles()" disabled>
+      Process Files
+    </button>
     <pre id="output"></pre>
     <script>
-       fileInput.addEventListener('change', () => {
+      fileInput.addEventListener("change", () => {
         processButton.disabled = fileInput.files.length === 0;
       });
       const trimCsvFile = (data) => {
@@ -84,19 +90,24 @@
         const fields = [
           { label: "Produs", value: "product" },
           { label: "Cod de Bare", value: "barcode" },
-          ...fileNames.map((name) => ({
-            label: `Stoc ${name}`,
-            value: `stock${name}`,
-          })),
-          { label: "Stoc Final", value: "totalStock" },
         ];
+        fileNames.forEach((name) => {
+          fields.push({ label: `Stoc ${name}`, value: `stock${name}` });
+        });
+        fields.push({ label: "Stoc Total", value: "totalStock" });
 
-        const csv = Papa.unparse(data, { fields });
+        const csv = Papa.unparse(data, {
+          delimiter: ";",
+          columns: fields.map((field) => field.label),
+        });
+
         const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
-        link.download = fileName;
+        link.setAttribute("download", fileName);
+        document.body.appendChild(link);
         link.click();
+        document.body.removeChild(link);
       };
 
       const filterByProductPrefix = (data, prefix) => {
