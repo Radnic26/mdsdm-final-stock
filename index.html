@@ -28,6 +28,17 @@
       "stockPitesti".
     </h4>
     <input type="file" id="fileInput" accept=".csv" multiple />
+    <label for="delimiterInput">Regiune:</label>
+    <input
+      type="radio"
+      id="delimiterEurope"
+      name="delimiter"
+      value=","
+      checked
+    />
+    <label for="delimiterEurope">Europa</label>
+    <input type="radio" id="delimiterOther" name="delimiter" value=";" />
+    <label for="delimiterOther">Alta</label>
     <button id="processButton" onclick="processFiles()" disabled>
       Process Files
     </button>
@@ -96,8 +107,18 @@
         });
         fields.push({ label: "Stoc Total", value: "totalStock" });
 
-        const csv = Papa.unparse(data, {
-          delimiter: ";",
+        // Prepend a single quote to the barcode values to force Excel to treat them as text
+        const modifiedData = data.map((item) => ({
+          ...item,
+          barcode: `="${item.barcode}"`,
+        }));
+
+        const delimiter = document.querySelector(
+          'input[name="delimiter"]:checked'
+        ).value;
+
+        const csv = Papa.unparse(modifiedData, {
+          delimiter: delimiter,
           columns: fields.map((field) => field.label),
         });
 
