@@ -10,7 +10,6 @@
       type="image/x-icon"
     />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/4.1.2/papaparse.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
   </head>
   <body>
     <h1>Maison du Savon de Marseille</h1>
@@ -28,7 +27,18 @@
       final vei avea coloanele: "totalStock", "stockFerdinand" si
       "stockPitesti".
     </h4>
-    <input type="file" id="fileInput" accept=".xls" multiple />
+    <input type="file" id="fileInput" accept=".csv" multiple />
+    <label for="delimiterInput">Regiune:</label>
+    <input
+      type="radio"
+      id="delimiterEurope"
+      name="delimiter"
+      value=","
+      checked
+    />
+    <label for="delimiterEurope">Europa</label>
+    <input type="radio" id="delimiterOther" name="delimiter" value=";" />
+    <label for="delimiterOther">Alta</label>
     <button id="processButton" onclick="processFiles()" disabled>
       Process Files
     </button>
@@ -43,22 +53,6 @@
           return lines.slice(9, -2).join("\n");
         }
         return data;
-      };
-
-      const readXlsFile = (file) => {
-        return new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: "array" });
-            const firstSheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[firstSheetName];
-            const csv = XLSX.utils.sheet_to_csv(worksheet);
-            resolve(csv);
-          };
-          reader.onerror = (err) => reject(err);
-          reader.readAsArrayBuffer(file);
-        });
       };
 
       const convertCsvToJson = (data) => {
@@ -103,69 +97,33 @@
         return Object.values(mergedData);
       };
 
-      const saveToXls = (data, fileName, fileNames) => {
+      const saveToCsv = (data, fileName, fileNames) => {
         const fields = [
           { label: "Produs", value: "product" },
           { label: "Cod de Bare", value: "barcode" },
         ];
         fileNames.forEach((name) => {
-          fields.push({
-            label: `Stoc ${name.slice(0, -4)}`,
-            value: `stock${name}`,
-          });
+          fields.push({ label: `Stoc ${name}`, value: `stock${name}` });
         });
         fields.push({ label: "Stoc Total", value: "totalStock" });
 
-        // // Format the barcode values as a formula to force Excel to treat them as text
-        // const modifiedData = data.map((item) => ({
-        //   ...item,
-        //   barcode: `="${item.barcode}"`,
-        // }));
-
-        // Convert the data to a worksheet
-        const worksheetData = data.map((item) =>
-          fields.map((field) => item[field.value])
-        );
-        const worksheet = XLSX.utils.aoa_to_sheet([
-          fields.map((field) => field.label),
-          ...worksheetData,
-        ]);
-
-        // Create a new workbook and append the worksheet
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Stoc total");
-
-        // Define the range for the table
-        const range = XLSX.utils.decode_range(worksheet["!ref"]);
-        const tableRange = XLSX.utils.encode_range(range);
-
-        // Add table properties to the worksheet
-        worksheet["!autofilter"] = { ref: tableRange };
-
-        // Write the workbook to a binary string
-        const workbookBinary = XLSX.write(workbook, {
-          bookType: "xls",
-          type: "binary",
+        // Prepend a single quote to the barcode values to force Excel to treat them as text
+        const modifiedData = data.map((item) => ({
+          ...item,
+          barcode: `="${item.barcode}"`,
+        }));
+        const delimiter = document.querySelector(
+          'input[name="delimiter"]:checked'
+        ).value;
+        const csv = Papa.unparse(modifiedData, {
+          delimiter: delimiter,
+          columns: fields.map((field) => field.label),
         });
 
-        const s2ab = (s) => {
-          const buf = new ArrayBuffer(s.length);
-          const view = new Uint8Array(buf);
-          for (let i = 0; i < s.length; i++) {
-            view[i] = s.charCodeAt(i) & 0xff;
-          }
-          return buf;
-        };
-
-        // Create a Blob from the binary string
-        const blob = new Blob([s2ab(workbookBinary)], {
-          type: "application/octet-stream",
-        });
-
-        // Create a download link and trigger the download
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
-        link.download = `${fileName}.xls`;
+        link.setAttribute("download", fileName);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -182,41 +140,53 @@
         const year = date.getFullYear();
         return `${day}-${month}-${year}`;
       };
-      let alertShown = false;
+
       const processFiles = async () => {
-        const files = fileInput.files;
-        const fileNames = Array.from(files).map((file) => file.name);
-        const jsonArrays = await Promise.all(
-          Array.from(files).map(async (file) => {
-            const csv = await readXlsFile(file);
-            if (!csv.startsWith("ROMAR COMMUNICATION")) {
-              if (!alertShown) {
-                alert("Aceste fisiere nu pot fi procesate.");
-                alertShown = true;
-                throw new Error(
-                  `File ${file.name} does not start with "ROMAR COMMUNICATION"`
-                );
-              }
-            }
-            const trimmedCsv = trimCsvFile(csv);
-            return convertCsvToJson(trimmedCsv);
+        const files = Array.from(document.getElementById("fileInput").files);
+        const fileNames = files.map((file) => file.name.replace(".csv", ""));
+        let alertShown = false;
+
+        const jsonData = await Promise.all(
+          files.map((file) => {
+            return new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = async (event) => {
+                const csvData = event.target.result;
+                if (
+                  !csvData.startsWith("ROMAR COMMUNICATION INCORPORATED SRL")
+                ) {
+                  if (!alertShown) {
+                    alert("Fisierele incarcate nu pot fi procesate!");
+                    alertShown = true;
+                  }
+                  return reject(new Error(`Invalid file: ${file.name}`));
+                }
+                const trimmedData = trimCsvFile(csvData);
+                const json = await convertCsvToJson(trimmedData);
+                resolve(json);
+              };
+              reader.onerror = (error) => reject(error);
+              reader.readAsText(file);
+            });
           })
         );
-        const mergedData = mergeJsons(jsonArrays, fileNames);
+
+        const mergedJsonArray = mergeJsons(jsonData, fileNames);
+
         const prefixes = ["C&D", "FAC", "LPN", "PDS"];
         const filteredData = prefixes.map((prefix) =>
-          filterByProductPrefix(mergedData, prefix)
+          filterByProductPrefix(mergedJsonArray, prefix)
         );
 
-        saveToXls(
-          mergedData,
-          `StocTotal-${getCurrentFormattedDate()}`,
+        saveToCsv(
+          mergedJsonArray,
+          `StocTotal-${getCurrentFormattedDate()}.csv`,
           fileNames
         );
         prefixes.forEach((prefix, index) => {
-          saveToXls(
+          saveToCsv(
             filteredData[index],
-            `Stoc${prefix}-${getCurrentFormattedDate()}`,
+            `Stoc${prefix}-${getCurrentFormattedDate()}.csv`,
             fileNames
           );
         });
